@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>계산기</h2>
+
+<input id="a">
++
+<input id="b">
+
+<button onclick="calc()">계산</button>
+
+<p id="result"></p>
+
+<script>
+function calc(){
+ let a = Number(document.getElementById("a").value)
+ let b = Number(document.getElementById("b").value)
+
+ document.getElementById("result").innerHTML = a+b
+}
+</script>
+
+</body>
+</html>
