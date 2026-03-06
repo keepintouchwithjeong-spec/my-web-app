@@ -1,0 +1,239 @@
+<!-- 수업일정 달력 (휴일 날짜도 빨간색 표시 버전) -->
+<style>
+  .schedule-cal-wrap{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-wrap:wrap;gap:18px;}
+  .month-card{border:1px solid #ddd;border-radius:8px;padding:12px;width:320px;box-shadow:0 4px 10px rgba(0,0,0,0.03);background:#fff;}
+  .month-title{font-size:18px;font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  table.cal{width:100%;border-collapse:collapse;text-align:center;table-layout:fixed;}
+  table.cal th{font-size:13px;padding:6px 0;border-bottom:1px solid #eee;}
+  table.cal td{height:68px;vertical-align:top;padding:6px;border-bottom:1px solid #f3f3f3;border-right:1px solid #f3f3f3;position:relative;}
+  table.cal tr td:last-child{border-right:0;}
+  .date-num{font-size:14px;font-weight:600;display:block;margin-bottom:4px;}
+  .note{font-size:12px;line-height:1.15;white-space:pre-wrap;}
+  /* 규칙 색상 */
+  .weekend { color:#d12b2b; } /* 토/일 날짜 */
+  .holiday { background:#d12b2b;color:#fff;border-radius:6px;padding:4px; } /* 휴일 내용 */
+  .classday { background:#1e90ff;color:#fff;border-radius:6px;padding:4px; }
+  .classday.past { background:#bfbfbf !important;color:#fff; }
+  .empty { background:#fff;color:#000;border-radius:6px;padding:4px; }
+  /* 작은 화면 */
+  @media(max-width:700px){.month-card{width:calc(50% - 12px);} }
+  @media(max-width:420px){.month-card{width:100%;}table.cal th,table.cal td{font-size:12px;}.date-num{font-size:13px;}}
+  .legend{font-size:13px;margin-top:8px;display:flex;gap:10px;align-items:center;}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend .box{width:14px;height:14px;border-radius:3px;display:inline-block}
+
+  /* 날짜 숫자 (한 자리/두 자리 모두 안전-2자리숫자일때 아래줄로 밀리는 현상 없게) */
+  .date-num{
+    font-size:14px;
+    font-weight:600;
+    display:inline-block;    /* 블록처럼 너비/패딩 제어 가능 */
+    margin-bottom:4px;
+    padding:2px 6px;         /* 내부여백: 두자리도 줄바꿈 없이 들어가도록 */
+    line-height:1;           /* 수직 중앙 정렬 고정 */
+    white-space:nowrap;      /* 숫자 내부 줄바꿈 금지 */
+    min-width:24px;          /* 한 자리 숫자도 가운데 정렬 유지 */
+    text-align:center;
+    box-sizing:border-box;
+  }
+
+  /* 오늘 표시: 살짝 둥근 네모, 숫자 흐름 깨지지 않음 */
+  .today {
+    background: yellow;
+    border-radius:6px;
+    padding:2px 6px;
+    display:inline-block;
+    line-height:1;
+    white-space:nowrap;
+    min-width:24px;
+    text-align:center;
+    box-sizing:border-box;
+  }
+
+  /* 작은 화면에서 여백 줄이기 (선택) */
+  @media(max-width:420px){
+    .date-num, .today{
+      padding:1px 4px;
+      font-size:13px;
+      min-width:20px;
+    }
+  }
+</style>
+
+
+<h2 style="text-align:left; color:dodgerblue;">
+  2025년 하반기 수업일정
+</h2>
+<p style="font-weight: bold;">'25. 8. 13. - '25. 11. 19.</p>
+
+<p id="summary" style="text-align:left; font-weight:bold; margin-bottom:20px;"></p>
+
+<div id="scheduleCal" class="schedule-cal-wrap"></div>
+
+<script>
+(function(){
+  const classes=[
+    {date:'25-8-13',title:'83 본문'},
+    {date:'25-8-20',title:'83 일기'},
+    {date:'25-8-27',title:'84 전체'},
+    {date:'25-9-3',title:'85 본문'},
+    {date:'25-9-10',title:'85 일기'},
+    {date:'25-9-17',title:'86 전체'},
+    {date:'25-9-24',title:'87 본문'},
+    {date:'25-10-1',title:'87 일기'},
+    {date:'25-10-15',title:'88 본문'},
+    {date:'25-10-22',title:'88 일기'},
+    {date:'25-10-29',title:'89 전체'},
+    {date:'25-11-5',title:'90 전체'},
+    {date:'25-11-12',title:'91 본문'},
+    {date:'25-11-19',title:'91 일기'}
+  ];
+  const holidays=[
+    {date:'25-1-1',name:'신정'},
+    {date:'25-1-27',name:'임시공휴일'},
+    {date:'25-1-28',name:'설-1'},
+    {date:'25-1-29',name:'설날'},
+    {date:'25-1-30',name:'설+1'},
+    {date:'25-3-1',name:'삼일절'},
+    {date:'25-3-3',name:'대체휴일'},
+    {date:'25-5-5',name:'어린이/부처'},
+    {date:'25-5-6',name:'대체휴일'},
+    {date:'25-6-3',name:'대통령선거'},
+    {date:'25-6-6',name:'현충일'},
+    {date:'25-8-15',name:'광복절'},
+    {date:'25-10-3',name:'개천절'},
+    {date:'25-10-5',name:'추석-1'},
+    {date:'25-10-6',name:'추석'},
+    {date:'25-10-7',name:'추석+1'},
+    {date:'25-10-8',name:'대체휴일'},
+    {date:'25-10-9',name:'한글날'},
+    {date:'25-12-25',name:'크리스마스'}
+  ];
+
+  //✅ 문자열로 된 날짜(yy-m-d 또는 yyyy-m-d)를 JavaScript Date 객체로 변환하는 기능
+  function parseYMD(s){
+    const p=s.split('-').map(x=>x.trim());
+    if(p[0].length===2)p[0]='20'+p[0];
+    return new Date(+p[0],+p[1]-1,+p[2]);
+  }
+
+  // -----------------------
+  //✅ 달력은 수업일의 최소/최대 달을 자동 계산하도록 되어 있음
+  // -----------------------
+
+  const classMap={},holidayMap={};
+  classes.forEach(c=>{const d=parseYMD(c.date).toISOString().slice(0,10);classMap[d]=(classMap[d]?classMap[d]+'\n':'')+c.title;});
+  holidays.forEach(h=>{const d=parseYMD(h.date).toISOString().slice(0,10);holidayMap[d]=h.name;});
+  const classDates=classes.map(c=>parseYMD(c.date));
+  const minDate=new Date(Math.min(...classDates.map(d=>d.getTime())));
+  const maxDate=new Date(Math.max(...classDates.map(d=>d.getTime())));
+  const startMonth=new Date(minDate.getFullYear(),minDate.getMonth(),1);
+  const endMonth=new Date(maxDate.getFullYear(),maxDate.getMonth(),1);
+
+  // ---- 오늘/컷오프 관련 값 (수정된 부분) ----
+  const now = new Date(); // 현재 시각 (실제 현재 시각)
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 오늘 00:00
+  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0, 0); // 오늘 17:00
+  // -----------------------------------------
+
+  //✅ 완료된 수업 회차 계산 및 메시지 출력 (수정된 로직)
+  let completedCount = 0;
+  classes.forEach(c => {
+    const dt = parseYMD(c.date);
+    const classDate = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()); // 수업일의 00:00
+
+    // 수업일이 오늘 이전이면 완료
+    if (classDate.getTime() < todayDate.getTime()) {
+      completedCount++;
+    }
+    // 수업일이 오늘이고 현재 시각이 컷오프(17:00) 이후이면 완료
+    else if (classDate.getTime() === todayDate.getTime() && now.getTime() >= cutoff.getTime()) {
+      completedCount++;
+    }
+  });
+
+  const totalCount = classes.length;
+  const remainingCount = totalCount - completedCount;
+
+  // 오늘 날짜 문자열
+  const todayText = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일`;
+
+  // 요약 문구, 오늘 날짜를 넣으려면 ${todayText} 추가
+  const summaryText = `현재 총 <b>${totalCount}</b>회 중 <br>
+  <b>${completedCount}</b>회를 완료했고, <b>${remainingCount}</b>회가 남았습니다.`;
+
+  // 화면에 표시
+  const summaryDiv = document.createElement('p');
+  summaryDiv.style.textAlign = 'left';
+  summaryDiv.style.fontWeight = 'normal';
+  summaryDiv.style.marginBottom = '20px';
+  summaryDiv.style.color = 'blue';
+  summaryDiv.innerHTML = summaryText; // innerHTML로 넣어야 <br>이 적용됨
+
+  // 달력 위에 삽입
+  document.getElementById('scheduleCal').before(summaryDiv);
+
+
+  //✅달력 출력
+  function createMonthCard(y,m){
+    const card=document.createElement('div');card.className='month-card';
+    const mt=document.createElement('div');mt.className='month-title';
+    mt.innerHTML=`<div>${new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long'}).format(new Date(y,m))}</div>`;
+    card.appendChild(mt);
+    const tbl=document.createElement('table');tbl.className='cal';
+    const thead=document.createElement('thead');thead.innerHTML='<tr><th>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th></tr>';tbl.appendChild(thead);
+    const tbody=document.createElement('tbody');
+    const first=new Date(y,m,1),last=new Date(y,m+1,0),start=first.getDay();
+    let row=document.createElement('tr');
+    for(let i=0;i<start;i++)row.appendChild(document.createElement('td'));
+    for(let d=1;d<=last.getDate();d++){
+      const dt=new Date(y,m,d),iso=dt.toISOString().slice(0,10);
+      const td=document.createElement('td');
+      const num=document.createElement('span');num.className='date-num';num.textContent=d;
+
+      // 오늘 날짜면 표시
+      const isToday = dt.toDateString() === new Date().toDateString();
+      if (isToday) num.classList.add('today');
+
+      if(dt.getDay()===0||dt.getDay()===6)num.classList.add('weekend');
+      const cont=document.createElement('div');cont.className='note';
+      const isH=holidayMap[iso]!=null,isC=classMap[iso]!=null;
+      if(isH){cont.textContent=holidayMap[iso];cont.classList.add('holiday');num.style.color='#d12b2b';}
+      else if(isC){cont.textContent=classMap[iso];cont.classList.add('classday');}
+      else{cont.classList.add('empty');}
+      if(isH&&isC){cont.textContent=holidayMap[iso]+'\n'+classMap[iso];}
+
+      // -----------------------------
+      // '지나간 수업일' 표시 로직 (수정된 부분)
+      // 수업일이 오늘 이전이거나(00:00 기준) 오늘이고 현재 시각이 컷오프 이후이면 'past' 클래스 추가
+      if (isC) {
+        const classDateForCell = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+        if (classDateForCell.getTime() < todayDate.getTime()) {
+          cont.classList.add('past');
+        } else if (classDateForCell.getTime() === todayDate.getTime() && now.getTime() >= cutoff.getTime()) {
+          cont.classList.add('past');
+        }
+      }
+      // -----------------------------
+
+      td.appendChild(num);td.appendChild(cont);
+      row.appendChild(td);
+      if(dt.getDay()===6){tbody.appendChild(row);row=document.createElement('tr');}
+    }
+    if(row.children.length>0){for(let k=row.children.length;k<7;k++)row.appendChild(document.createElement('td'));tbody.appendChild(row);}
+    tbl.appendChild(tbody);card.appendChild(tbl);
+    const leg=document.createElement('div');leg.className='legend';
+    leg.innerHTML=`<span><i class="box" style="background:#1e90ff"></i> 수업일</span>
+                   <span><i class="box" style="background:#bfbfbf"></i> 지나간 수업일</span>
+                   <span><i class="box" style="background:#d12b2b"></i> 휴일</span>
+                   <span><i class="box" style="background:yellow"></i> 오늘</span>
+                   `;
+    card.appendChild(leg);
+    return card;
+  }
+
+  const container=document.getElementById('scheduleCal');
+  let cur=new Date(startMonth);
+  while(cur<=endMonth){container.appendChild(createMonthCard(cur.getFullYear(),cur.getMonth()));cur.setMonth(cur.getMonth()+1);}
+})();
+
+</script>
